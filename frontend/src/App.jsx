@@ -19,12 +19,28 @@ function App() {
   const gate = gates.find((g) => g.gateId === gateId);
   const tags = gate?.tags ?? [];
 
-  const [config, setConfig] = useState(null);
+  // 설정은 어느 게이트 것인지 함께 저장해서, 게이트가 바뀌면 다시 불러온다
+  const [loadedConfig, setLoadedConfig] = useState({ gateId: null, value: null });
+  const config = loadedConfig.gateId === gateId ? loadedConfig.value : null;
+  const setConfig = (value) => setLoadedConfig({ gateId, value });
+
+  // 백엔드가 늦게 켜지거나 잠시 꺼져도 설정을 받을 때까지 3초마다 다시 시도한다
   useEffect(() => {
-    getConfig(gateId)
-      .then(setConfig)
-      .catch(() => setConfig(null));
-  }, [gateId]);
+    if (config) return;
+    let cancelled = false;
+    let timer;
+    const load = () =>
+      getConfig(gateId)
+        .then((value) => !cancelled && setLoadedConfig({ gateId, value }))
+        .catch(() => {
+          if (!cancelled) timer = setTimeout(load, 3000);
+        });
+    load();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [gateId, config]);
 
   const [soundOn, setSoundOn] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -106,7 +122,7 @@ function App() {
       <section className="gate-status">
         <span className={`dot ${gate?.online ? "online" : "offline"}`} />
         {statusError ? (
-          <span>서버에 연결할 수 없습니다 ({statusError.message})</span>
+          <span>{statusError.message}</span>
         ) : gate ? (
           <span>
             {gate.gateId}{" "}
