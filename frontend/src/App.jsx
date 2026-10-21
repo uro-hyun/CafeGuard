@@ -21,7 +21,9 @@ function App() {
 
   const [config, setConfig] = useState(null);
   useEffect(() => {
-    getConfig(gateId).then(setConfig).catch(() => setConfig(null));
+    getConfig(gateId)
+      .then(setConfig)
+      .catch(() => setConfig(null));
   }, [gateId]);
 
   const [soundOn, setSoundOn] = useState(false);
@@ -52,15 +54,22 @@ function App() {
     setConfig(await saveConfig(gateId, { armed: !config.armed }));
   };
 
-  const labels = Object.fromEntries(gates.flatMap((g) => g.tags.map((t) => [t.tagId, t.label])));
+  const labels = Object.fromEntries(
+    gates.flatMap((g) => g.tags.map((t) => [t.tagId, t.label])),
+  );
 
   return (
     <div className={`app ${alarming ? "alarming" : ""}`}>
       {alarming && (
         <div className="alarm-banner" role="alert">
           <strong>🚨 도난 경보</strong>
-          <span>{alarmTags.map((t) => t.label || t.tagId).join(", ")} 이(가) 구역을 벗어났습니다</span>
-          {soundOn && !muted && <button onClick={() => setMuted(true)}>소리 끄기</button>}
+          <span>
+            {alarmTags.map((t) => t.label || t.tagId).join(", ")} 이(가) 구역을
+            벗어났습니다
+          </span>
+          {soundOn && !muted && (
+            <button onClick={() => setMuted(true)}>소리 끄기</button>
+          )}
         </div>
       )}
 
@@ -71,7 +80,10 @@ function App() {
         </div>
         <div className="topbar-actions">
           {gates.length > 1 && (
-            <select value={gateId} onChange={(e) => setSelectedGateId(e.target.value)}>
+            <select
+              value={gateId}
+              onChange={(e) => setSelectedGateId(e.target.value)}
+            >
               {gates.map((g) => (
                 <option key={g.gateId} value={g.gateId}>
                   {g.gateId}
@@ -81,7 +93,10 @@ function App() {
           )}
           {!soundOn && <button onClick={enableSound}>🔔 경보음 켜기</button>}
           {config && (
-            <button className={`arm-toggle ${config.armed ? "armed" : ""}`} onClick={toggleArmed}>
+            <button
+              className={`arm-toggle ${config.armed ? "armed" : ""}`}
+              onClick={toggleArmed}
+            >
               {config.armed ? "경계 중" : "경계 해제됨"}
             </button>
           )}
@@ -94,8 +109,12 @@ function App() {
           <span>서버에 연결할 수 없습니다 ({statusError.message})</span>
         ) : gate ? (
           <span>
-            {gate.gateId} {gate.online ? "온라인" : `오프라인 (${Math.round(gate.lastReportAgoMs / 1000)}초 전 마지막 보고)`}
-            {gate.online && ` · Wi-Fi ${gate.wifiRssi} dBm · 태그 ${tags.length}개`}
+            {gate.gateId}{" "}
+            {gate.online
+              ? "온라인"
+              : `오프라인 (${Math.round(gate.lastReportAgoMs / 1000)}초 전 마지막 보고)`}
+            {gate.online &&
+              ` · Wi-Fi ${gate.wifiRssi} dBm · 태그 ${tags.length}개`}
           </span>
         ) : (
           <span>게이트 보드의 보고를 기다리는 중...</span>
@@ -105,7 +124,9 @@ function App() {
       <main className="layout">
         <section className="tags">
           {tags.length === 0 ? (
-            <div className="panel empty">감지된 태그가 없습니다. 태그 보드의 전원을 켜 주세요.</div>
+            <div className="panel empty">
+              감지된 태그가 없습니다. 태그 보드의 전원을 켜 주세요.
+            </div>
           ) : (
             tags.map((t) => <TagCard key={t.tagId} tag={t} config={config} />)
           )}
