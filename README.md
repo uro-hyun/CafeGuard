@@ -223,7 +223,15 @@ flowchart TD
         └── Red LED 제어
 ```
 
-> 실제 회로 연결 방식과 GPIO 번호는 하드웨어 테스트 과정에서 확정합니다.
+### 게이트보드 배선 (ESP32 NodeMCU-32S)
+
+| GPIO | 연결 | 비고 |
+|---|---|---|
+| GPIO25 | Active Buzzer (+) | Buzzer (-) → GND |
+| GPIO26 | Red LED (+, 220Ω 직렬) | 경고 표시 |
+| GPIO27 | Green LED (+, 220Ω 직렬) | 서버 연결 상태 (켜짐: 정상 / 깜빡임: 오프라인) — 선택 |
+
+지급보드(ESP32-C3 SuperMini)는 별도 배선 없이 내장 LED(GPIO8)로 동작 여부만 표시합니다.
 
 ---
 
@@ -371,38 +379,123 @@ sequenceDiagram
 ## 🗂️ 프로젝트 폴더 구조
 
 ```text
-esp32-cafe-theft-prevention/
+CafeGuard/
 ├── README.md
-├── hardware/
-│   ├── esp32-receiver/
-│   ├── esp32-tag/
-│   └── circuit/
+├── firmware/
+│   ├── gate/                 # 게이트보드 (ESP32 NodeMCU-32S)
+│   │   ├── gate.ino
+│   │   └── secrets.example.h # → secrets.h 로 복사 후 Wi-Fi/서버 정보 입력
+│   └── tag/                  # 지급보드 (ESP32-C3 SuperMini)
+│       └── tag.ino
 ├── backend/
+│   ├── index.js              # 서버 시작 (MongoDB 연결, Socket.IO)
 │   ├── src/
-│   │   ├── controllers/
-│   │   ├── services/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── sockets/
-│   │   └── utils/
-│   ├── package.json
+│   │   ├── app.js            # REST API
+│   │   ├── config.js
+│   │   ├── models/           # Tag, Gate, Alarm, Event, RssiLog, Settings
+│   │   └── services/
+│   │       ├── detector.js   # 이동 평균 + 게이트 통과 판정 (순수 로직)
+│   │       └── monitor.js    # 실시간 상태 관리, 알람 발생
+│   ├── scripts/simulate-gate.js  # 하드웨어 없이 테스트하는 게이트 시뮬레이터
+│   ├── test/                 # node:test 단위 테스트
 │   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── hooks/
-│   │   └── styles/
-│   ├── package.json
-│   └── .env.example
-└── docs/
-    ├── system-architecture.md
-    ├── api-specification.md
-    ├── database-design.md
-    ├── test-plan.md
-    └── presentation/
+└── frontend/
+    ├── vite.config.js        # 개발 시 /api, /socket.io → 백엔드 프록시
+    └── src/
+        ├── App.jsx
+        ├── components.jsx    # 알람 배너, 게이트, 지급보드, 등록, 설정, 이력
+        ├── hooks.js          # Socket.IO 구독, 경고음
+        └── api.js
 ```
+
+---
+
+## ▶️ 실행 및 테스트 가이드
+
+### 1. MongoDB 준비 (둘 중 하나)
+
+- **로컬 설치**: [MongoDB Community Server](https://www.mongodb.com/try/download/community) 설치 후 기본 포트(27017)로 실행
+- **MongoDB Atlas (무료 M0)**: 클러스터 생성 → Database Access에서 사용자 생성 → Network Access에 PC의 IP 추가 → 연결 문자열 복사
+
+### 2. 백엔드 실행
+
+```bash
+cd backend
+cp .env.example .env      # MONGODB_URI, DEVICE_KEY 수정
+npm install
+npm run dev               # http://localhost:5000
+npm test                  # 판정 로직 단위 테스트
+```
+
+> 게이트보드가 접속해야 하므로 서버는 `0.0.0.0`으로 열립니다. Windows 방화벽에서 Node.js의 개인 네트워크 접근을 허용하세요.
+
+### 3. 대시보드 실행
+
+```bash
+cd frontend
+npm install
+npm run dev               # http://localhost:5173 (API는 자동으로 5000번 포트로 프록시)
+```
+
+배포 시에는 `npm run build` 후 백엔드만 실행하면 `http://<서버IP>:5000`에서 대시보드까지 함께 제공됩니다.
+
+### 4. 하드웨어 없이 먼저 테스트 (시뮬레이터)
+
+```bash
+cd backend
+npm run simulate -- --key <DEVICE_KEY> --tags 2
+```
+
+1. 대시보드에 `GATE-01` 게이트가 나타나고, 미등록 감지 목록에 `CG-TAG-01`, `CG-TAG-02`가 표시됨
+2. 클릭해서 지급보드로 등록
+3. 시뮬레이터 터미널에서 `1` 또는 `2` 입력 → 해당 지급보드가 게이트를 통과 → 대시보드 경보 + 시뮬레이터에 `🔔 BUZZER ON` 표시
+4. 대시보드에서 **알람 해제** → 부저 꺼짐
+
+### 5. 펌웨어 업로드 (Arduino IDE)
+
+1. 보드 매니저: **esp32 by Espressif Systems 3.x** 설치
+2. 라이브러리 매니저: **NimBLE-Arduino 2.x**, **ArduinoJson 7.x** 설치
+3. 지급보드: `firmware/tag/tag.ino`의 `TAG_ID`를 태그마다 다르게(`CG-TAG-01`, `CG-TAG-02`) 설정 → 보드 `ESP32C3 Dev Module`, USB CDC On Boot `Enabled`로 업로드
+4. 게이트보드: `firmware/gate/secrets.example.h` → `secrets.h`로 복사해 Wi-Fi, 서버 주소(PC의 내부 IP), `DEVICE_KEY` 입력 → 보드 `ESP32 Dev Module`, Partition Scheme `Huge APP (3MB No OTA)`로 업로드
+5. 시리얼 모니터(115200)에서 `[WiFi] 연결됨`, 태그별 RSSI 출력 확인
+
+> ESP32는 2.4GHz Wi-Fi만 지원합니다. PC와 게이트보드가 같은 네트워크에 있어야 합니다.
+
+### 6. 현장 튜닝 (중요)
+
+RSSI는 설치 환경(벽, 사람, 금속)에 따라 크게 달라지므로 기본 임계값(-55 dBm)을 그대로 쓰기보다 실측으로 맞춰야 합니다.
+
+1. 지급보드를 평소 자리(좌석)에 두고 대시보드의 이동평균 값을 확인 (예: -78 dBm)
+2. 지급보드를 들고 문(게이트 바로 옆)을 지나가며 최대값 확인 (예: -45 dBm)
+3. **판정 설정**에서 임계값을 두 값의 중간보다 게이트 쪽(예: -55 dBm)으로 설정
+4. 좌석에서 오탐이 나면 임계값을 올리고(-50), 통과를 놓치면 내리거나 근접 유지 시간을 줄임
+
+게이트보드는 문틀 높이 1m 전후, 좌석 쪽보다 출입 동선 쪽을 향하도록 설치하면 좌석과의 신호 차이가 커져 판정이 안정적입니다.
+
+### 게이트 통과 판정 방식
+
+```text
+게이트보드: 1초 동안 받은 광고 패킷 RSSI 평균 → 서버 보고
+서버:      최근 N개(기본 5) 이동 평균 ≥ 임계값 상태가 1.5초 이상 지속 → "통과"
+           감시 ON 지급보드면 알람 생성 → 게이트 응답 alarm=true → 부저/LED
+           알람은 대시보드에서 해제할 때까지 유지
+           통과 후 (임계값 - 여유) 아래로 멀어져야 재판정 (게이트 앞 체류 시 중복 알람 방지)
+서버 장애: 게이트가 마지막 설정으로 자체 판정해 부저를 울리고, 복구되면 기록을 서버에 보고
+```
+
+### 주요 API
+
+| Method | Path | 설명 |
+|---|---|---|
+| POST | `/api/device/report` | 게이트보드 보고 (헤더 `X-Device-Key`) |
+| GET | `/api/state` | 전체 실시간 상태 |
+| POST / PATCH / DELETE | `/api/tags`, `/api/tags/:tagId` | 지급보드 등록/수정(감시 ON·OFF, 지급 대상)/삭제 |
+| POST | `/api/gates/:gateId/test-alarm` | 게이트 부저 테스트 (3초) |
+| POST | `/api/alarms/:id/ack`, `/api/alarms/ack-all` | 알람 해제 |
+| GET / PUT | `/api/settings` | 판정 설정 |
+| GET | `/api/events?limit=100&tagId=` | 이력 조회 |
+
+실시간 갱신은 Socket.IO `state`(전체 스냅샷), `alarm`(신규 알람) 이벤트로 전달됩니다.
 
 ---
 
