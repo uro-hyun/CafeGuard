@@ -1,122 +1,48 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect } from 'react'
+import { useMonitor, useNow, useSiren } from './hooks'
+import { AlarmBanner, EventPanel, GatePanel, RegisterPanel, SettingsPanel, TagPanel } from './components'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const { state, connected } = useMonitor()
+  const now = useNow()
+  const alarmCount = state?.alarms.length ?? 0
+  const siren = useSiren(alarmCount > 0)
+
+  useEffect(() => {
+    document.title = alarmCount ? `🚨(${alarmCount}) CafeGuard 관제` : 'CafeGuard 관제'
+  }, [alarmCount])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className={`app ${alarmCount ? 'is-alarm' : ''}`}>
+      <header className="topbar">
+        <h1>
+          CafeGuard <span>관제</span>
+        </h1>
+        <div className="topbar-right">
+          <span className={`conn ${connected ? 'conn-on' : 'conn-off'}`}>
+            <span className={`dot ${connected ? 'dot-on' : 'dot-off'}`} />
+            {connected ? '서버 연결됨' : '서버 연결 끊김'}
+          </span>
+          <button className="btn btn-ghost" onClick={siren.enabled ? siren.disable : siren.enable}>
+            {siren.enabled ? '🔊 경고음 켜짐' : '🔇 경고음 켜기'}
+          </button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {!state ? (
+        <p className="loading">서버에 연결하는 중…</p>
+      ) : (
+        <main>
+          <AlarmBanner alarms={state.alarms} tags={state.tags} gates={state.gates} />
+          <GatePanel gates={state.gates} tags={state.tags} now={now} />
+          <TagPanel tags={state.tags} gates={state.gates} settings={state.settings} now={now} />
+          <div className="two-col">
+            <RegisterPanel unknownTags={state.unknownTags} now={now} />
+            <SettingsPanel settings={state.settings} />
+          </div>
+          <EventPanel events={state.events} />
+        </main>
+      )}
+    </div>
   )
 }
-
-export default App
