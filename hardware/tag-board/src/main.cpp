@@ -7,7 +7,9 @@
 namespace {
 
 constexpr int PIN_LED = 8;                   // SuperMini 내장 파란 LED (LOW일 때 켜짐)
-constexpr int TX_POWER_DBM = 0;              // 송신 세기를 고정해야 RSSI-거리 관계가 일정하다
+// 송신 세기를 고정해야 RSSI-거리 관계가 일정하다.
+// SuperMini는 안테나가 작아서 0dBm이면 바로 옆에서도 -80dBm 근처로 약하게 잡히므로 최대치로 둔다
+constexpr int TX_POWER_DBM = 9;
 constexpr uint16_t ADV_INTERVAL = 160;       // 광고 간격 (0.625ms 단위, 160 = 100ms)
 constexpr uint32_t HEARTBEAT_MS = 3000;      // 동작 확인용 LED 깜빡임 주기
 
