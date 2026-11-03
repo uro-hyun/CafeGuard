@@ -1,12 +1,16 @@
 const STATE_TEXT = { NORMAL: "정상", WARNING: "주의", ALARM: "경보" };
-const REASON_TEXT = { RSSI_LOW: "신호 약함", SIGNAL_LOST: "신호 끊김", RECOVERED: "복귀" };
+const REASON_TEXT = {
+  RSSI_LOW: "신호 약함",
+  SIGNAL_LOST: "신호 끊김",
+  RECOVERED: "복귀",
+};
 
 export default function EventLog({ events, labels }) {
   return (
     <section className="panel events">
       <h2>이벤트 기록</h2>
       {!events?.length ? (
-        <p className="empty">아직 기록이 없습니다.</p>
+        <p className="empty">아직 감지되지 않음.</p>
       ) : (
         <ul>
           {events.map((e) => (

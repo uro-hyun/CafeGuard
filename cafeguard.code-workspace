@@ -1,0 +1,10 @@
+{
+  // VS Code에서 "파일 → 파일에서 작업 영역 열기"로 이 파일을 열면
+  // PlatformIO가 게이트/태그 보드를 각각 프로젝트로 인식해서 Arduino.h 등 자동완성이 동작한다.
+  "folders": [
+    { "name": "CafeGuard", "path": "." },
+    { "name": "gate-board (ESP32)", "path": "hardware/gate-board" },
+    { "name": "tag-board (ESP32-C3)", "path": "hardware/tag-board" }
+  ],
+  "settings": {}
+}
