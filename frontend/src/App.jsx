@@ -78,10 +78,11 @@ function App() {
     <div className={`app ${alarming ? "alarming" : ""}`}>
       {alarming && (
         <div className="alarm-banner" role="alert">
-          <strong>🚨 도난 경보</strong>
+          <strong>🚨 경보 (부저 울리는 중)</strong>
           <span>
-            {alarmTags.map((t) => t.label || t.tagId).join(", ")} 이(가) 구역을
-            벗어났습니다
+            {alarmTags
+              .map((t) => `${t.label || t.tagId} (${t.rssi} dBm)`)
+              .join(", ")}
           </span>
           {soundOn && !muted && (
             <button onClick={() => setMuted(true)}>소리 끄기</button>

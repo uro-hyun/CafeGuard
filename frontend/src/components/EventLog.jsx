@@ -3,6 +3,8 @@ const REASON_TEXT = {
   RSSI_LOW: "신호 약함",
   SIGNAL_LOST: "신호 끊김",
   RECOVERED: "복귀",
+  TAG_NEAR: "태그 접근 (부저 ON)",
+  TAG_AWAY: "태그 멀어짐 (부저 OFF)",
 };
 
 export default function EventLog({ events, labels }) {
